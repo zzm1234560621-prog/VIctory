@@ -2219,11 +2219,21 @@ mod tests {
         let Some(heap) = HostHeap::new(false, 4) else {
             return; // no host GPU
         };
-        // Every index a translated shader can reach exists (clamped below
-        // `HEAP_VIEWS`, `HEAP_SAMPLERS`).
+        // The heap holds the title's slots and the dynamic range `new`
+        // settled on. Not `HEAP_VIEWS`: that is 2^21, above
+        // `PORTABLE_VIEWS`, so a host capped below it — the NVIDIA ones
+        // `new` names, and the Intel iGPU this was found on — takes the
+        // shorter `MIN_DYNAMIC` range instead, and asserting `HEAP_VIEWS`
+        // fails on every such host while passing on a tier-3 one.
         // SAFETY: plain queries of live heaps.
         unsafe {
-            assert!(heap.heap.GetDesc().NumDescriptors >= victory_shader::emit::HEAP_VIEWS);
+            let total = heap.heap.GetDesc().NumDescriptors;
+            assert!(
+                total >= heap.count + heap.dynamic,
+                "the heap holds the title's slots and its dynamic range: {total}, want {} + {}",
+                heap.count,
+                heap.dynamic
+            );
             let samplers = HostHeap::new(true, 128).unwrap();
             assert!(samplers.heap.GetDesc().NumDescriptors >= victory_shader::emit::HEAP_SAMPLERS);
         }
