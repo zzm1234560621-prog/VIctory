@@ -371,6 +371,24 @@ impl HostHeap {
         self.dynamic(2)
     }
 
+    /// The first slot a host copy's views can take: past the title's slots
+    /// and the dynamic ones, which is where [`HostHeap::pair`] starts. On a
+    /// host that takes [`MIN_DYNAMIC`] instead of [`DYNAMIC`] this is below
+    /// `1 << 18`, so tests must not spell that constant out.
+    #[cfg(test)]
+    pub(crate) fn first_pair_slot(&self) -> u32 {
+        self.count + self.dynamic
+    }
+
+    /// Whether the pair region has room at all: on a capped heap the region
+    /// end can fall below its first slot, and [`HostHeap::pair`] then takes
+    /// dynamic slots instead.
+    #[cfg(test)]
+    pub(crate) fn has_pair_region(&self) -> bool {
+        self.first_pair_slot() + 2 <= self.pairs_end
+    }
+
+
     /// Gives back a pair [`HostHeap::pair`] returned.
     pub(crate) fn free_pair(&self, index: u32) {
         if index >= self.count + self.dynamic {
